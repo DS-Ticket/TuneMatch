@@ -1,0 +1,61 @@
+stages:
+
+  ingest:
+    cmd: python -m src.data.ingest
+    deps:
+      - src/data/ingest.py
+      - config/config.yaml
+    outs:
+      - data/raw
+
+  preprocess:
+    cmd: python -m src.data.preprocess
+    deps:
+      - src/data/preprocess.py
+      - config/config.yaml
+      - data/raw
+    outs:
+      - data/processed/tracks.parquet
+      - data/processed/interactions.parquet
+
+  split:
+    cmd: python -m src.data.split
+    deps:
+      - src/data/split.py
+      - config/config.yaml
+      - data/processed/tracks.parquet
+    outs:
+      - data/processed/tracks_train.parquet
+      - data/processed/tracks_val.parquet
+      - data/processed/tracks_test.parquet
+
+  features:
+    cmd: python -m src.features.audio_features && python -m src.features.embeddings
+    deps:
+      - src/features/audio_features.py
+      - src/features/embeddings.py
+      - config/config.yaml
+      - data/processed/tracks_train.parquet
+    outs:
+      - data/features/vibe_matrix.parquet
+      - data/features/full_feature_matrix.parquet
+      - data/features/embeddings.parquet
+
+  train_content_based:
+    cmd: python -m src.models.content_based
+    deps:
+      - src/models/content_based.py
+      - config/config.yaml
+      - data/features/vibe_matrix.parquet
+      - data/processed/tracks_train.parquet
+    outs:
+      - models/content_based.pkl
+
+  train_collaborative:
+    cmd: python -m src.models.collaborative
+    deps:
+      - src/models/collaborative.py
+      - config/config.yaml
+      - data/processed/interactions.parquet
+    outs:
+      - models/als_model.pkl
