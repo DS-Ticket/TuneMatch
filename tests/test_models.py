@@ -37,7 +37,7 @@ class TestContentBasedRecommender:
         model.fit(tracks)
         recs = model.recommend(seed_track_idx=0, n=10)
         assert len(recs) == 10
-        assert 0 not in recs.index  # seed not in recommendations
+        assert 0 not in recs["track_idx"].values  # seed not in recommendations
 
     def test_similarity_scores(self):
         tracks = make_tracks(100)
@@ -55,7 +55,7 @@ class TestContentBasedRecommender:
         recs = model.batch_recommend([0, 1, 2], n=10)
         assert len(recs) == 10
         # Seed tracks should not be in output
-        assert not any(idx in recs.index for idx in [0, 1, 2])
+        assert not any(idx in recs["track_idx"].values for idx in [0, 1, 2])
 
     def test_exclude_already_played(self):
         tracks = make_tracks(100)

@@ -70,7 +70,8 @@ def build_full_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # One-hot categoricals
-    cat_encoded = pd.get_dummies(df[cat_cols], prefix=cat_cols) if cat_cols else pd.DataFrame()
+    present_cat = [c for c in cat_cols if c in df.columns]
+    cat_encoded = pd.get_dummies(df[present_cat]) if present_cat else pd.DataFrame(index=df.index)
 
     # Combine
     feature_matrix = pd.concat([cont_scaled, cat_encoded], axis=1)
