@@ -1,0 +1,121 @@
+project:
+  name: tunematch
+  version: "0.1.0"
+
+paths:
+  raw_data:       data/raw
+  processed_data: data/processed
+  features:       data/features
+  models:         models/
+  mlruns:         mlruns/
+  notebooks:      notebooks/
+
+# ── Kaggle Datasets ────────────────────────────────────────────────────────────
+datasets:
+  spotify_tracks:
+    slug: "maharshipandya/-spotify-tracks-dataset"
+    filename: "dataset.csv"
+    description: "125k tracks with full Spotify audio features + 125 genre labels (2022)"
+
+  million_song_lastfm:
+    slug: "undefinenull/million-song-dataset-spotify-lastfm"
+    files:
+      - "spotify_data.csv"
+      - "lastfm_data.csv"
+    description: "50k songs + 9.7M user listening history records for collaborative filtering"
+
+  spotify_1m:
+    slug: "rodolfofigueroa/spotify-12m-songs"
+    filename: "tracks_features.csv"
+    description: "1.2M tracks — used for large-scale audio similarity search"
+
+  spotify_30k:
+    slug: "joebeachcapital/30000-spotify-songs"
+    filename: "spotify_songs.csv"
+    description: "30k songs with subgenre labels — good for cold-start genre tagging"
+
+# ── Audio Features ─────────────────────────────────────────────────────────────
+audio_features:
+  continuous:
+    - danceability       # 0.0–1.0
+    - energy             # 0.0–1.0
+    - loudness           # dB, typically -60 to 0
+    - speechiness        # 0.0–1.0
+    - acousticness       # 0.0–1.0
+    - instrumentalness   # 0.0–1.0
+    - liveness           # 0.0–1.0
+    - valence            # 0.0–1.0  (musical positiveness)
+    - tempo              # BPM
+    - duration_ms
+  categorical:
+    - key                # 0–11 (Pitch Class notation)
+    - mode               # 0=minor, 1=major
+    - time_signature     # beats per bar
+
+  vibe_vector:           # subset used for similarity/transition scoring
+    - danceability
+    - energy
+    - valence
+    - acousticness
+    - instrumentalness
+    - tempo
+
+# ── Data Split ─────────────────────────────────────────────────────────────────
+split:
+  train_years: [2014, 2015, 2016, 2017, 2018, 2019, 2020]
+  val_years:   [2021]
+  test_years:  [2022]
+
+# ── Model Hyperparameters ──────────────────────────────────────────────────────
+models:
+  content_based:
+    n_neighbors: 20
+    metric: cosine
+    algorithm: brute
+
+  als:                   # Alternating Least Squares (implicit CF)
+    factors: 128
+    iterations: 30
+    regularization: 0.01
+    alpha: 40
+
+  hybrid_ranker:         # LightGBM re-ranker
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 63
+    objective: lambdarank
+    metric: ndcg
+
+  sequence_model:        # LSTM autoplay
+    embedding_dim: 128
+    hidden_dim: 256
+    num_layers: 2
+    dropout: 0.3
+    max_sequence_len: 20
+    epochs: 50
+    batch_size: 256
+    learning_rate: 0.001
+
+# ── Transition Playlist ────────────────────────────────────────────────────────
+transition:
+  bpm_tolerance: 5          # ±5 BPM considered compatible
+  key_wheel: camelot         # harmonic mixing system
+  energy_arc: gradual        # gradual | dramatic | flat
+  beam_width: 5              # beam search width for path finding
+
+# ── Evaluation ─────────────────────────────────────────────────────────────────
+evaluation:
+  k_values: [5, 10, 20]      # Precision@K, Recall@K, NDCG@K
+  min_interactions: 5        # min user interactions to include in eval
+
+# ── MLflow ─────────────────────────────────────────────────────────────────────
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "tunematch"
+
+# ── API ────────────────────────────────────────────────────────────────────────
+api:
+  host: "0.0.0.0"
+  port: 8000
+  max_recommendations: 50
+  default_recommendations: 20

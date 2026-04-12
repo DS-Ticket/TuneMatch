@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.2
+    container_name: tunematch_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/mlruns/mlflow.db
+      --default-artifact-root /mlflow/mlruns/artifacts
+      --host 0.0.0.0
+      --port 5000
+
+  api:
+    build: .
+    container_name: tunematch_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+    command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+
+  streamlit:
+    build: .
+    container_name: tunematch_streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    depends_on:
+      - api
+    command: streamlit run app/streamlit_app.py --server.address 0.0.0.0
+
+  airflow:
+    image: apache/airflow:2.9.1
+    container_name: tunematch_airflow
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./:/opt/airflow/tunematch
+    command: >
+      bash -c "airflow db init &&
+               airflow users create --username admin --password admin
+               --firstname TuneMatch --lastname Admin --role Admin --email admin@tunematch.io &&
+               airflow webserver"
