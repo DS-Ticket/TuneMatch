@@ -2,7 +2,11 @@
 data/raw/
 data/processed/
 data/features/
-models/
+
+# Trained model artifacts (tracked by DVC instead)
+models/*.pkl
+models/*.pt
+models/prod/
 
 # Secrets
 .env
