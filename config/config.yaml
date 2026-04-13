@@ -59,6 +59,8 @@ audio_features:
     - acousticness
     - instrumentalness
     - tempo
+    - speechiness        # critical for hip-hop/R&B vs pop/EDM distinction
+    - liveness
 
 # ── Data Split ─────────────────────────────────────────────────────────────────
 split:
@@ -110,7 +112,7 @@ evaluation:
 
 # ── MLflow ─────────────────────────────────────────────────────────────────────
 mlflow:
-  tracking_uri: "http://localhost:5000"
+  tracking_uri: "sqlite:///mlruns/mlflow.db"   # local SQLite — no server needed. Use `mlflow ui` to browse.
   experiment_name: "tunematch"
 
 # ── API ────────────────────────────────────────────────────────────────────────

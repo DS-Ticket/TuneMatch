@@ -23,6 +23,7 @@ def load_config(path: str = "config/config.yaml") -> dict:
 VIBE_FEATURES = [
     "danceability", "energy", "valence",
     "acousticness", "instrumentalness", "tempo",
+    "speechiness", "liveness",
 ]
 
 ALL_CONTINUOUS = [

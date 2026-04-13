@@ -32,19 +32,50 @@ AUDIO_FEATURES = [
 ]
 
 RENAME_MAPS = {
-    # spotify_tracks dataset column aliases
+    # spotify_tracks dataset (maharshipandya)
     "track_id":        "track_id",
     "track_name":      "track_name",
     "artists":         "artist",
     "album_name":      "album",
     "track_genre":     "genre",
     "popularity":      "popularity",
+    # spotify_12m_songs dataset (rodolfofigueroa) — different column names
+    "id":              "track_id",
+    "name":            "track_name",
+    # 30000_spotify_songs dataset
+    "track.name":      "track_name",
+    "artist.name":     "artist",
+    "playlist_genre":  "genre",
+    "playlist_subgenre": "subgenre",
 }
+
+
+def _clean_artist_column(series: pd.Series) -> pd.Series:
+    """Convert "['Artist A', 'Artist B']" → "Artist A, Artist B"."""
+    import ast
+
+    def _parse(val):
+        if not isinstance(val, str):
+            return val
+        val = val.strip()
+        if val.startswith("["):
+            try:
+                parsed = ast.literal_eval(val)
+                if isinstance(parsed, list):
+                    return ", ".join(str(v) for v in parsed)
+            except Exception:
+                pass
+            return val.strip("[]").replace("'", "").replace('"', "").strip()
+        return val
+
+    return series.apply(_parse)
 
 
 def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [c.lower().strip() for c in df.columns]
     df.rename(columns=RENAME_MAPS, inplace=True)
+    if "artist" in df.columns:
+        df["artist"] = _clean_artist_column(df["artist"])
     return df
 
 

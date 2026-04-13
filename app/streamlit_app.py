@@ -4,7 +4,11 @@ TuneMatch — Streamlit Demo
 Run: streamlit run app/streamlit_app.py
 """
 
+import sys
 from pathlib import Path
+
+# Ensure project root is on the path regardless of launch directory
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 import plotly.express as px
@@ -30,14 +34,43 @@ def load_config():
         return yaml.safe_load(f)
 
 
+def _clean_artist(val) -> str:
+    """Convert "['Artist Name']" or "['A', 'B']" to "Artist Name" or "A, B"."""
+    if not isinstance(val, str):
+        return str(val)
+    val = val.strip()
+    if val.startswith("["):
+        import ast
+        try:
+            parsed = ast.literal_eval(val)
+            if isinstance(parsed, list):
+                return ", ".join(str(v) for v in parsed)
+        except Exception:
+            pass
+        val = val.strip("[]").replace("'", "").replace('"', "")
+    return val
+
+
 @st.cache_resource
 def load_tracks():
     config = load_config()
     proc_dir = Path(config["paths"]["processed_data"])
     path = proc_dir / "tracks_train.parquet"
-    if path.exists():
-        return pd.read_parquet(path)
-    return pd.DataFrame()
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    # Clean artist column
+    for col in ["artist", "artists"]:
+        if col in df.columns:
+            df[col] = df[col].apply(_clean_artist)
+    # Rename artists → artist if needed
+    if "artists" in df.columns and "artist" not in df.columns:
+        df = df.rename(columns={"artists": "artist"})
+    # Ensure track_name column exists
+    for alt in ["name", "title", "song_name", "song"]:
+        if alt in df.columns and "track_name" not in df.columns:
+            df = df.rename(columns={alt: "track_name"})
+    return df
 
 
 @st.cache_resource
@@ -156,6 +189,23 @@ if seed_idx is not None:
             # ── Display playlist ───────────────────────────────────────────────
             st.subheader(f"Your {mode.title()} Playlist")
 
+            # Join result back to full tracks table so we always have all metadata
+            # (model's internal DataFrame may not carry every column)
+            meta_cols = ["track_idx", "track_name", "artist", "artists",
+                         "album", "genre", "popularity"]
+            meta = tracks[[c for c in meta_cols if c in tracks.columns]].copy()
+            if "track_idx" in result.columns and "track_idx" in meta.columns:
+                score_cols = [c for c in result.columns
+                              if c not in tracks.columns or c == "track_idx"]
+                result = result[score_cols].merge(meta, on="track_idx", how="left")
+
+            # Normalise artist column
+            for col in ["artist", "artists"]:
+                if col in result.columns:
+                    result[col] = result[col].apply(_clean_artist)
+            if "artists" in result.columns and "artist" not in result.columns:
+                result = result.rename(columns={"artists": "artist"})
+
             display_cols = ["track_name", "artist", "genre", "tempo", "energy",
                            "valence", "danceability"]
             if mode == "transition":
@@ -164,7 +214,11 @@ if seed_idx is not None:
                 display_cols += ["similarity"]
 
             show_cols = [c for c in display_cols if c in result.columns]
-            st.dataframe(result[show_cols], use_container_width=True)
+
+            # Show numbered playlist
+            display_df = result[show_cols].copy().reset_index(drop=True)
+            display_df.index = display_df.index + 1  # 1-based track numbers
+            st.dataframe(display_df, use_container_width=True)
 
             # ── Vibe radar chart ───────────────────────────────────────────────
             vibe_features = ["danceability", "energy", "valence",
