@@ -43,10 +43,11 @@ RENAME_MAPS = {
     "id":              "track_id",
     "name":            "track_name",
     # 30000_spotify_songs dataset
-    "track.name":      "track_name",
-    "artist.name":     "artist",
+    "track_artist":      "artist",
     "playlist_genre":  "genre",
     "playlist_subgenre": "subgenre",
+    "track_album_name": "album",
+    "track_popularity": "popularity"
 }
 
 
@@ -134,6 +135,20 @@ def load_spotify_1m(raw_dir: Path) -> pd.DataFrame:
 
     path = candidates[0]
     logger.info(f"Loading Spotify 1M from {path}")
+    df = pd.read_csv(path, low_memory=False)
+    return _standardize_columns(df)
+
+def load_spotify_30k(raw_dir: Path) -> pd.DataFrame:
+    """joebeachcapital/30000-spotify-songs"""
+    candidates = list(raw_dir.rglob("spotify_songs.csv"))
+    if not candidates:
+        candidates = list(raw_dir.rglob("*.csv"))
+    if not candidates:
+        logger.warning("Spotify 30k dataset not found — skipping")
+        return pd.DataFrame()
+
+    path = candidates[0]
+    logger.info(f"Loading Spotify 30k from {path}")
     df = pd.read_csv(path, low_memory=False)
     return _standardize_columns(df)
 
@@ -236,7 +251,7 @@ def run(config_path: str = "config/config.yaml") -> None:
 
     # ── Load each dataset ──────────────────────────────────────────────────────
     try:
-        df1 = load_spotify_tracks(raw_dir / "spotify_tracks_dataset")
+        df1 = load_spotify_tracks(raw_dir / "_spotify_tracks_dataset")
         track_dfs.append(df1)
     except FileNotFoundError as e:
         logger.warning(str(e))
@@ -257,6 +272,15 @@ def run(config_path: str = "config/config.yaml") -> None:
             track_dfs.append(df_1m)
     except Exception as e:
         logger.warning(f"Spotify 1M load failed: {e}")
+
+    try:
+        df_30k = load_spotify_30k(raw_dir / "30000_spotify_songs")
+        if not df_30k.empty:
+            track_dfs.append(df_30k)
+    except Exception as e:
+        logger.warning(f"Spotify 30k load failed: {e}")
+
+
 
     if not track_dfs:
         logger.error("No datasets loaded. Run `python -m src.data.ingest` first.")
