@@ -1,4 +1,4 @@
-# 🎵 TuneMatch
+# TuneMatch - Attempt at rivaling Apple Music's Autoplay function
 
 **Audio-feature-aware music recommendation engine** — matches songs by *vibe* (danceability, energy, valence, acousticness, tempo) rather than relying on genre tags or collaborative popularity alone.
 
