@@ -39,6 +39,10 @@ env/
 .vscode/
 .idea/
 
+# Claude Code
+.claude/
+CLAUDE.md
+
 # Airflow
 airflow/logs/
 airflow/airflow.db
